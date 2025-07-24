@@ -2,10 +2,10 @@ import os
 import re
 import logging
 from pathlib import Path
-from typing import Dict, Optional, NoReturn
-import argparse
+from typing import Dict, Optional, NoReturn, List, Tuple
 
-__version__ = "1.0.0"
+# 从config导入版本信息
+from config import __version__
 
 # 中文数字到阿拉伯数字的映射常量
 CHINESE_NUM_MAP: Dict[str, int] = {
@@ -203,26 +203,67 @@ def configure_logging(verbose: bool = False) -> None:
     )
 
 
-def main() -> None:
+def preview_conversions(target_path: Path) -> List[Tuple[Path, str]]:
     """
-    程序主入口
+    预览文件转换结果
+    :param target_path: 目标目录路径
+    :return: 转换清单列表，每个元素为(原文件路径, 新文件名)
     """
-    parser = argparse.ArgumentParser(description=f'中文数字文件名转换工具 v{__version__}')
-    parser.add_argument('--path', default=r'F:\cn2an测试', help='目标目录路径')
+    conversions = []
+    if not target_path.exists() or not target_path.is_dir():
+        return conversions
+
+    files = [entry for entry in target_path.iterdir() if entry.is_file()]
+
+    for entry in files:
+        match = re.search(r'第([一二三四五六七八九十百千万亿零]+)', entry.name)
+        if match:
+            chinese_number = match.group(1)
+            try:
+                num = chinese_to_arabic(chinese_number)
+                new_name = re.sub(rf'第{re.escape(chinese_number)}', str(num), entry.name, count=1)
+                if new_name != entry.name:
+                    conversions.append((entry, new_name))
+            except Exception as e:
+                logging.warning(f"文件 '{entry.name}' 转换预览失败: {str(e)}")
+
+    return conversions
+
+
+def perform_conversions(conversions: List[Tuple[Path, str]]) -> int:
+    """
+    执行文件转换
+    :param conversions: 转换清单列表，每个元素为(原文件路径, 新文件名)
+    :return: 成功转换的文件数量
+    """
+    success_count = 0
+    for entry, new_name in conversions:
+        try:
+            new_path = entry.parent / new_name
+            if not new_path.exists():
+                entry.rename(new_path)
+                success_count += 1
+                logging.info(f"成功重命名: {entry.name} -> {new_name}")
+            else:
+                logging.warning(f"文件 '{new_name}' 已存在，跳过转换")
+        except Exception as e:
+            logging.error(f"文件 '{entry.name}' 转换失败: {str(e)}")
+
+    return success_count
+
+
+if __name__ == "__main__":
+    # 保留命令行功能
+    import argparse
+    parser = argparse.ArgumentParser(description=f'{__version__}中文数字文件名转换工具 v{__version__}')
+    parser.add_argument('--path', default='.', help='目标目录路径')
     parser.add_argument('-v', '--verbose', action='store_true', help='显示详细日志信息')
     parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args()
 
-    # 配置日志
     configure_logging(args.verbose)
-
-    # 验证并处理路径
     try:
         target_path = Path(args.path).resolve()
         process_files(target_path)
     except Exception as e:
         exit_with_error(f"程序执行出错: {str(e)}")
-
-
-if __name__ == "__main__":
-    main()
