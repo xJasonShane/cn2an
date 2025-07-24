@@ -203,52 +203,61 @@ def configure_logging(verbose: bool = False) -> None:
     )
 
 
-def preview_conversions(target_path: Path) -> List[Tuple[Path, str]]:
+def preview_conversions(folder_path, match_pattern=r'第{cn_num}', replace_pattern=r'{an_num}'):
     """
-    预览文件转换结果
-    :param target_path: 目标目录路径
-    :return: 转换清单列表，每个元素为(原文件路径, 新文件名)
+    预览文件转换效果，返回转换列表但不实际修改文件
+    
+    Args:
+        folder_path: 目标文件夹路径
+        match_pattern: 匹配模式，包含{cn_num}占位符表示中文数字位置
+        replace_pattern: 替换模式，包含{an_num}占位符表示阿拉伯数字位置
+        
+    Returns:
+        转换列表，每个元素是(原文件entry, 新文件名)的元组
     """
-    conversions = []
-    if not target_path.exists() or not target_path.is_dir():
-        return conversions
+    conversion_list = []
+    # 解析匹配模式，将{cn_num}替换为中文数字正则表达式
+    cn_num_regex = r'([零一二三四五六七八九十百千万亿]+)'
+    # 转义特殊字符，但保留{cn_num}的替换
+    regex_pattern = re.escape(match_pattern).replace(r'\{cn_num\}', cn_num_regex)
+    pattern = re.compile(regex_pattern)
+    
+    for entry in os.scandir(folder_path):
+        if entry.is_file():
+            match = pattern.search(entry.name)
+            if match:
+                chinese_number = match.group(1)
+                try:
+                    num = chinese_to_arabic(chinese_number)
+                    # 应用替换模式
+                    new_name = pattern.sub(replace_pattern.replace('{an_num}', str(num)), entry.name, count=1)
+                    conversion_list.append((entry, new_name))
+                except ValueError as e:
+                    logging.warning(f"无法转换中文数字: {chinese_number}, 错误: {e}")
+    
+    return conversion_list
 
-    files = [entry for entry in target_path.iterdir() if entry.is_file()]
 
-    for entry in files:
-        match = re.search(r'第([一二三四五六七八九十百千万亿零]+)', entry.name)
-        if match:
-            chinese_number = match.group(1)
-            try:
-                num = chinese_to_arabic(chinese_number)
-                new_name = re.sub(rf'第{re.escape(chinese_number)}', str(num), entry.name, count=1)
-                if new_name != entry.name:
-                    conversions.append((entry, new_name))
-            except Exception as e:
-                logging.warning(f"文件 '{entry.name}' 转换预览失败: {str(e)}")
-
-    return conversions
-
-
-def perform_conversions(conversions: List[Tuple[Path, str]]) -> int:
+def perform_conversions(conversion_list):
     """
-    执行文件转换
-    :param conversions: 转换清单列表，每个元素为(原文件路径, 新文件名)
-    :return: 成功转换的文件数量
+    执行文件转换，实际修改文件名
+    
+    Args:
+        conversion_list: 由preview_conversions返回的转换列表
+        
+    Returns:
+        成功转换的文件数量
     """
     success_count = 0
-    for entry, new_name in conversions:
+    for entry, new_name in conversion_list:
         try:
-            new_path = entry.parent / new_name
-            if not new_path.exists():
-                entry.rename(new_path)
-                success_count += 1
-                logging.info(f"成功重命名: {entry.name} -> {new_name}")
-            else:
-                logging.warning(f"文件 '{new_name}' 已存在，跳过转换")
+            new_path = os.path.join(os.path.dirname(entry.path), new_name)
+            os.rename(entry.path, new_path)
+            success_count += 1
+            logging.info(f"已转换: {entry.name} -> {new_name}")
         except Exception as e:
-            logging.error(f"文件 '{entry.name}' 转换失败: {str(e)}")
-
+            logging.error(f"转换失败: {entry.name}, 错误: {e}")
+    
     return success_count
 
 
