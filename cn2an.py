@@ -16,10 +16,6 @@ CHINESE_NUM_MAP: Dict[str, int] = {
 # 中文数字匹配模式（预编译提升性能）
 CHINESE_NUM_PATTERN = re.compile(r'第([一二三四五六七八九十百千万亿零]+)')
 
-# 单位阈值常量
-SECTION_THRESHOLD = 10000
-
-
 def validate_chinese_number(chinese_num: str) -> None:
     """
     验证中文数字字符串是否只包含有效字符
@@ -32,6 +28,8 @@ def validate_chinese_number(chinese_num: str) -> None:
 
 
 def chinese_to_arabic(chinese_num: str) -> int:
+    if not chinese_num:
+        raise ValueError("中文数字字符串不能为空")
     """
     将中文数字转换为阿拉伯数字
     :param chinese_num: 中文数字字符串（如'一', '十', '一百二十三', '十亿'）
@@ -104,7 +102,7 @@ def chinese_to_arabic(chinese_num: str) -> int:
             temp_value = 0
 
     # 添加最后剩余的值
-    current_section += current_value
+    current_section += temp_value
     result += current_section
 
     return result
