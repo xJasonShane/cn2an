@@ -9,12 +9,26 @@ from config import __version__
 
 # 中文数字到阿拉伯数字的映射常量
 CHINESE_NUM_MAP: Dict[str, int] = {
-    '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
-    '十': 10, '百': 100, '千': 1000, '万': 10000, '亿': 100000000
+    "零": 0,
+    "一": 1,
+    "二": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+    "十": 10,
+    "百": 100,
+    "千": 1000,
+    "万": 10000,
+    "亿": 100000000,
 }
 
 # 中文数字匹配模式（预编译提升性能）
-CHINESE_NUM_PATTERN = re.compile(r'第([一二三四五六七八九十百千万亿零]+)')
+CHINESE_NUM_PATTERN = re.compile(r"第([一二三四五六七八九十百千万亿零]+)")
+
 
 def validate_chinese_number(chinese_num: str) -> None:
     """
@@ -40,52 +54,46 @@ def chinese_to_arabic(chinese_num: str) -> int:
     validate_chinese_number(chinese_num)
 
     # 处理特殊情况：单独的"十"表示10
-    if chinese_num == '十':
+    if chinese_num == "十":
         return 10
 
     # 中文数字转换核心算法
     # 定义单位值映射
-    unit_map = {
-        '十': 10,
-        '百': 100,
-        '千': 1000,
-        '万': 10000,
-        '亿': 100000000
-    }
+    unit_map = {"十": 10, "百": 100, "千": 1000, "万": 10000, "亿": 100000000}
     # 基础数字值映射
     num_map = {
-        '一': 1,
-        '二': 2,
-        '三': 3,
-        '四': 4,
-        '五': 5,
-        '六': 6,
-        '七': 7,
-        '八': 8,
-        '九': 9
+        "一": 1,
+        "二": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
     }
 
     # 初始化变量
     result = 0
     current_section = 0  # 当前小节（个级）
-    temp_value = 0       # 当前临时值
+    temp_value = 0  # 当前临时值
 
     for char in chinese_num:
         if char in num_map:
             # 当前字符是数字
             temp_value = temp_value * 10 + num_map[char]
-        elif char == '零':
+        elif char == "零":
             # 处理零
             current_section += temp_value
             temp_value = 0
         elif char in unit_map:
             # 当前字符是单位
             unit_val = unit_map[char]
-            
+
             # 如果没有前置数字，默认为1（如"十"表示10）
             if temp_value == 0:
                 temp_value = 1
-            
+
             # 处理高级单位（万和亿）
             if unit_val >= 10000:
                 # 先将临时值加到当前小节
@@ -97,7 +105,7 @@ def chinese_to_arabic(chinese_num: str) -> int:
             else:
                 # 处理低级单位（十、百、千）
                 current_section += temp_value * unit_val
-            
+
             # 重置临时值
             temp_value = 0
 
@@ -133,7 +141,9 @@ def process_files(target_path: Path) -> None:
         if process_single_file(entry):
             renamed_files += 1
 
-    logging.info(f"处理完成: 共处理 {processed_files} 个文件，成功重命名 {renamed_files} 个文件")
+    logging.info(
+        f"处理完成: 共处理 {processed_files} 个文件，成功重命名 {renamed_files} 个文件"
+    )
 
 
 def process_single_file(file_path: Path) -> bool:
@@ -150,7 +160,9 @@ def process_single_file(file_path: Path) -> bool:
     chinese_number = match.group(1)
     try:
         num = chinese_to_arabic(chinese_number)
-        new_name = re.sub(rf'第{re.escape(chinese_number)}', str(num), file_path.name, count=1)
+        new_name = re.sub(
+            rf"第{re.escape(chinese_number)}", str(num), file_path.name, count=1
+        )
 
         if new_name == file_path.name:
             logging.warning(f"警告: 文件名 '{file_path.name}' 未发生变化，已跳过")
@@ -163,7 +175,9 @@ def process_single_file(file_path: Path) -> bool:
             return False
 
         if new_path.exists():
-            logging.error(f"错误: 新文件名 '{new_name}' 已存在，文件 '{file_path.name}' 已跳过")
+            logging.error(
+                f"错误: 新文件名 '{new_name}' 已存在，文件 '{file_path.name}' 已跳过"
+            )
             return False
 
         file_path.rename(new_path)
@@ -196,30 +210,32 @@ def configure_logging(verbose: bool = False) -> None:
     log_level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
 
-def preview_conversions(folder_path, match_pattern=r'第{cn_num}', replace_pattern=r'{an_num}'):
+def preview_conversions(
+    folder_path, match_pattern=r"第{cn_num}", replace_pattern=r"{an_num}"
+):
     """
     预览文件转换效果，返回转换列表但不实际修改文件
-    
+
     Args:
         folder_path: 目标文件夹路径
         match_pattern: 匹配模式，包含{cn_num}占位符表示中文数字位置
         replace_pattern: 替换模式，包含{an_num}占位符表示阿拉伯数字位置
-        
+
     Returns:
         转换列表，每个元素是(原文件entry, 新文件名)的元组
     """
     conversion_list = []
     # 解析匹配模式，将{cn_num}替换为中文数字正则表达式
-    cn_num_regex = r'([零一二三四五六七八九十百千万亿]+)'
+    cn_num_regex = r"([零一二三四五六七八九十百千万亿]+)"
     # 转义特殊字符，但保留{cn_num}的替换
-    regex_pattern = re.escape(match_pattern).replace(r'\{cn_num\}', cn_num_regex)
+    regex_pattern = re.escape(match_pattern).replace(r"\{cn_num\}", cn_num_regex)
     pattern = re.compile(regex_pattern)
-    
+
     for entry in os.scandir(folder_path):
         if entry.is_file():
             match = pattern.search(entry.name)
@@ -228,21 +244,25 @@ def preview_conversions(folder_path, match_pattern=r'第{cn_num}', replace_patte
                 try:
                     num = chinese_to_arabic(chinese_number)
                     # 应用替换模式
-                    new_name = pattern.sub(replace_pattern.replace('{an_num}', str(num)), entry.name, count=1)
+                    new_name = pattern.sub(
+                        replace_pattern.replace("{an_num}", str(num)),
+                        entry.name,
+                        count=1,
+                    )
                     conversion_list.append((entry, new_name))
                 except ValueError as e:
                     logging.warning(f"无法转换中文数字: {chinese_number}, 错误: {e}")
-    
+
     return conversion_list
 
 
 def perform_conversions(conversion_list):
     """
     执行文件转换，实际修改文件名
-    
+
     Args:
         conversion_list: 由preview_conversions返回的转换列表
-        
+
     Returns:
         成功转换的文件数量
     """
@@ -255,17 +275,22 @@ def perform_conversions(conversion_list):
             logging.info(f"已转换: {entry.name} -> {new_name}")
         except Exception as e:
             logging.error(f"转换失败: {entry.name}, 错误: {e}")
-    
+
     return success_count
 
 
 if __name__ == "__main__":
     # 保留命令行功能
     import argparse
-    parser = argparse.ArgumentParser(description=f'{__version__}中文数字文件名转换工具 v{__version__}')
-    parser.add_argument('--path', default='.', help='目标目录路径')
-    parser.add_argument('-v', '--verbose', action='store_true', help='显示详细日志信息')
-    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
+
+    parser = argparse.ArgumentParser(
+        description=f"{__version__}中文数字文件名转换工具 v{__version__}"
+    )
+    parser.add_argument("--path", default=".", help="目标目录路径")
+    parser.add_argument("-v", "--verbose", action="store_true", help="显示详细日志信息")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     args = parser.parse_args()
 
     configure_logging(args.verbose)

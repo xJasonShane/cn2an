@@ -164,14 +164,18 @@ class MainWindow:
         """创建转换预览列表区域"""
         # 先创建并放置按钮框架，确保在底部
         confirm_frame = tk.Frame(self.root, padx=20, pady=15)
-        confirm_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(5, 15), anchor=tk.S)  # 减少顶部边距，确保按钮可见
+        confirm_frame.pack(
+            fill=tk.X, side=tk.BOTTOM, pady=(5, 15), anchor=tk.S
+        )  # 减少顶部边距，确保按钮可见
 
         list_frame = tk.LabelFrame(self.root, text="转换清单预览", padx=10, pady=10)
         list_frame.pack(
             fill=tk.X, expand=False, padx=20, pady=(5, 5), side=tk.TOP
         )  # 减少垂直边距，为按钮留出空间
 
-        self.list_text = scrolledtext.ScrolledText(list_frame, wrap=tk.WORD, height=4)  # 进一步减小高度至4行确保按钮可见
+        self.list_text = scrolledtext.ScrolledText(
+            list_frame, wrap=tk.WORD, height=4
+        )  # 进一步减小高度至4行确保按钮可见
         self.list_text.pack(fill=tk.X, expand=False)  # 禁用垂直扩展，确保按钮可见
         self.list_text.config(state=tk.DISABLED)
 
