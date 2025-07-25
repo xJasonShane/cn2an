@@ -42,22 +42,26 @@ class MainWindow:
 
     def _setup_main_window(self) -> None:
         """设置主窗口框架和标题"""
-        main_frame = tk.Frame(self.root, padx=20, pady=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        self.main_frame = tk.Frame(self.root)
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 创建上部固定区域框架
+        self.upper_frame = tk.Frame(self.main_frame)
+        self.upper_frame.pack(fill=tk.X, expand=False)
 
         # 版本更新检查按钮
-        self.check_update_btn = tk.Button(main_frame, text=f"v{config.__version__}", fg="blue", cursor="hand2", command=self.check_for_updates)
-        self.check_update_btn.pack(anchor=tk.NE)
+        self.check_update_btn = tk.Button(self.upper_frame, text=f"v{config.__version__}", fg="blue", cursor="hand2", command=self.check_for_updates)
+        self.check_update_btn.pack(anchor=tk.NE, padx=20, pady=5)
 
         # 标题
         title_label = tk.Label(
-            main_frame, text=config.APP_NAME, font=("SimHei", 16, "bold")
+            self.upper_frame, text=config.APP_NAME, font=("SimHei", 16, "bold")
         )
         title_label.pack(pady=(0, 20))
 
     def _create_path_selection_frame(self) -> None:
         """创建文件夹选择区域"""
-        path_frame = tk.Frame(self.root, padx=20)
+        path_frame = tk.Frame(self.upper_frame, padx=20)
         path_frame.pack(fill=tk.X)
 
         tk.Label(path_frame, text="目标文件夹:", font=("SimHei", 10)).pack(
@@ -73,8 +77,7 @@ class MainWindow:
 
     def _create_conversion_rules_frame(self) -> None:
         """创建匹配/替换模式输入区域的UI组件"""
-        """创建转换规则设置区域"""
-        regex_frame = tk.LabelFrame(self.root, text="自定义转换规则", padx=10, pady=10)
+        regex_frame = tk.LabelFrame(self.upper_frame, text="自定义转换规则", padx=10, pady=10)
         regex_frame.pack(fill=tk.X, padx=20, pady=(10, 10))
 
         # 匹配模式
@@ -146,9 +149,8 @@ class MainWindow:
 
     def _create_action_buttons(self) -> None:
         """创建底部操作按钮区域的UI组件"""
-        """创建操作按钮区域"""
-        btn_frame = tk.Frame(self.root, padx=20)
-        btn_frame.pack(fill=tk.X)
+        btn_frame = tk.Frame(self.upper_frame, padx=20)
+        btn_frame.pack(fill=tk.X, pady=(10, 0))
 
         self.convert_btn = tk.Button(
             btn_frame,
@@ -164,23 +166,23 @@ class MainWindow:
 
     def _create_preview_list(self) -> None:
         """创建转换预览列表区域的UI组件"""
-        """创建转换预览列表区域"""
-        # 先创建并放置按钮框架，确保在底部
-        confirm_frame = tk.Frame(self.root, padx=20, pady=15)
-        confirm_frame.pack(
-            fill=tk.X, side=tk.BOTTOM, pady=(5, 15), anchor=tk.S
-        )  # 减少顶部边距，确保按钮可见
+        # 预览区域独占剩余空间
+        preview_container = tk.Frame(self.main_frame)
+        preview_container.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
-        list_frame = tk.LabelFrame(self.root, text="转换清单预览", padx=10, pady=10)
-        list_frame.pack(
-            fill=tk.X, expand=False, padx=20, pady=(5, 5), side=tk.TOP
-        )  # 减少垂直边距，为按钮留出空间
+        # 预览列表框架
+        list_frame = tk.LabelFrame(preview_container, text="转换清单预览", padx=10, pady=10)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=20)
 
         self.list_text = scrolledtext.ScrolledText(
             list_frame, wrap=tk.WORD, height=4
-        )  # 进一步减小高度至4行确保按钮可见
-        self.list_text.pack(fill=tk.X, expand=False)  # 禁用垂直扩展，确保按钮可见
+        )
+        self.list_text.pack(fill=tk.BOTH, expand=True)
         self.list_text.config(state=tk.DISABLED)
+
+        # 底部按钮
+        confirm_frame = tk.Frame(preview_container, padx=20, pady=15)
+        confirm_frame.pack(fill=tk.X, side=tk.BOTTOM)
 
         self.confirm_btn = tk.Button(
             confirm_frame,
