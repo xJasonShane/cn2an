@@ -9,6 +9,9 @@ from pathlib import Path
 import logging
 import threading
 from cn2an import preview_conversions, perform_conversions
+import requests
+import webbrowser
+from packaging import version
 
 # 配置日志
 logging.basicConfig(
@@ -42,9 +45,9 @@ class MainWindow:
         main_frame = tk.Frame(self.root, padx=20, pady=20)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 版本信息
-        version_label = tk.Label(main_frame, text=f"v{config.__version__}", fg="gray")
-        version_label.pack(anchor=tk.NE)
+        # 版本更新检查按钮
+        self.check_update_btn = tk.Button(main_frame, text=f"v{config.__version__}", fg="blue", cursor="hand2", command=self.check_for_updates)
+        self.check_update_btn.pack(anchor=tk.NE)
 
         # 标题
         title_label = tk.Label(
@@ -426,3 +429,48 @@ class MainWindow:
         # 延迟恢复验证以确保插入完成
         # 在所有待处理事件完成后恢复验证，确保插入操作已完成
         entry.after_idle(lambda e=entry: e.config(validate="key"))
+
+    def check_for_updates(self) -> None:
+        """检查更新按钮点击事件处理"""
+        self.check_update_btn.config(state=tk.DISABLED)
+        self.check_update_btn.config(text="检查中...")
+        threading.Thread(target=self._check_updates_in_background, daemon=True).start()
+
+    def _check_updates_in_background(self) -> None:
+        """在后台线程检查GitHub最新版本"""
+        try:
+            # 检查配置是否完整
+            if not config.GITHUB_REPO or config.GITHUB_REPO == "username/repo":
+                self.root.after(0, lambda: messagebox.showwarning("配置不完整", "请先在config.py中配置正确的GitHub仓库信息"))
+                return
+
+            # 请求GitHub API获取最新版本
+            response = requests.get(f"https://api.github.com/repos/{config.GITHUB_REPO}/releases/latest", timeout=10)
+            response.raise_for_status()
+            latest_release = response.json()
+            latest_version = latest_release['tag_name'].lstrip('v')  # 移除版本号前的'v'
+            
+            # 比较版本号
+            current_version = config.__version__
+            if version.parse(latest_version) > version.parse(current_version):
+                self.root.after(0, lambda: self.show_update_dialog(latest_version, latest_release['html_url']))
+            else:
+                self.root.after(0, lambda: messagebox.showinfo("已是最新版本", f"当前版本 v{current_version} 已是最新"))
+                
+        except requests.exceptions.RequestException as e:
+            self.root.after(0, lambda: messagebox.showerror("网络错误", f"无法连接到GitHub: {str(e)}"))
+        except Exception as e:
+            self.root.after(0, lambda: messagebox.showerror("错误", f"检查更新失败: {str(e)}"))
+        finally:
+            self.root.after(0, self._reset_update_button)
+
+    def show_update_dialog(self, latest_version: str, release_url: str) -> None:
+        """显示更新提示对话框"""
+        current_version = config.__version__
+        if messagebox.askyesno("发现更新", f"有新版本可用: v{latest_version}\n当前版本: v{current_version}\n是否前往下载页面?"):
+            webbrowser.open(release_url)
+
+    def _reset_update_button(self) -> None:
+        """重置更新按钮状态"""
+        self.check_update_btn.config(state=tk.NORMAL)
+        self.check_update_btn.config(text=f"v{config.__version__}")
